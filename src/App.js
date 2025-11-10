@@ -39,13 +39,15 @@ export default function App() {
 
   useEffect(
     function () {
+      const controller = new AbortController();
+
       async function fetchMovies() {
         try {
           setError("");
           setIsLoading(true);
           const response = await fetch(
             `https://api.themoviedb.org/3/search/movie?query=${query}&include_adult=false&language=en-US&page=1`,
-            options
+            { ...options, signal: controller.signal }
           );
 
           if (!response.ok) {
@@ -59,9 +61,11 @@ export default function App() {
           }
 
           setMovies(data.results);
-          console.log(data.results);
+          setError("");
         } catch (error) {
-          setError(error.message);
+          if (error.name !== "AbortError") {
+            setError(error.message);
+          }
         } finally {
           setIsLoading(false);
         }
@@ -73,6 +77,10 @@ export default function App() {
         return;
       }
       fetchMovies();
+
+      return function () {
+        controller.abort();
+      };
     },
     [query]
   );
@@ -233,6 +241,18 @@ function MovieDetails({ selectedID, handleCloseMovie, onAddWatched, watched }) {
       getMovieDetails();
     },
     [selectedID]
+  );
+
+  useEffect(
+    function () {
+      if (!movie.title) return;
+      document.title = `usePopcorn | ${movie.title}`;
+
+      return function () {
+        document.title = "usePopcorn";
+      };
+    },
+    [movie]
   );
 
   function handleAdd() {
